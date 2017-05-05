@@ -10,62 +10,54 @@ var error
 // middleware that is specific to this router
 router.use(function timeLog(req, res, next) {
     console.log('Time: ', Date.now())
+    console.log(res)
     //console.log(req);
-    success = function (data) {
-        res.send(data);
+
+    success = function (_res) {
+        res.statusCode = req.method === 'POST' ? 201 : req.method === 'DELETE' ? 204 : 200;
+        res.setHeader('Content-Type', 'application/json');
+        res.write(JSON.stringify(_res.data));
+        res.end();
+    }
+
+    error = function (err) {
+        res.statusCode = 500;
+        res.setHeader('Content-Type', 'text/plain');
+        res.write(err);
+        res.end();
     }
     next();
 
 })
 // define the home page route
 router.get('/:entity/:id', function (req, res) {
-
     getData(req.params.entity, req.params.id)
-        .then(function (res) {
-            res.send(res.data);
-        }, function (err) {
-            res.send(err);
-        });
-
+        .then(success, error);
 
 })
 
-router.get('/:entity', function (req, res) {
+router.get('/:entity', function (req, res, next) {
     getData(req.params.entity)
-        .then(function (res) {
-            res.send(res.data);
-        }, function (err) {
-            res.send(err);
-        });
+        .then(success, error);
 
 })
 // define the about route
 router.post('/:entity', function (req, res) {
     insertData(req.params.entity, req.body)
-        .then(function (data) {
-            res.send(data);
-        }, function (err) {
-            res.send(err);
-        });
+        .then(success, error);
 })
 
 router.put('/:entity/:id', function (req, res) {
     updateData(req.params.entity, req.params.id, req.body)
-        .then(function (data) {
-            res.send(data);
-        }, function (err) {
-            res.send(err);
-        });
+        .then(success, error);
 })
 
 router.delete('/:entity/:id', function (req, res) {
     deleteData(req.params.entity, req.params.id)
-        .then(function (data) {
-            res.send(data);
-        }, function (err) {
-            res.send(err);
-        });
+        .then(success, error);
 })
+
+
 
 
 
@@ -101,7 +93,7 @@ function getData(entity, id) {
                 })
                 _res = _res === undefined ? defer.reject('No Data found.') : JSON.stringify(_res);
             } else {
-                _res = data;
+                _res = JSON.parse(data);;
             }
 
             defer.resolve({ file: _fileName, data: _res });
@@ -115,8 +107,8 @@ function getData(entity, id) {
 function insertData(entity, data) {
     var defer = q.defer();
     getData(entity).then(function (_res) {
-        _data = JSON.parse(_res.data);
-
+        //_data = JSON.parse(_res.data);
+        _data = _res.data;
         if (Array.isArray(_data)) {
             data.id = _data.length + 1;
             _data.push(data);
@@ -125,7 +117,7 @@ function insertData(entity, data) {
         _data = JSON.stringify(_data);
 
         writeDataToFile(_res.file, _data).then(function () {
-            defer.resolve(data);
+            defer.resolve({ data: data });
         })
 
 
@@ -144,15 +136,17 @@ function insertData(entity, data) {
 function updateData(entity, id, data) {
 
     var defer = q.defer();
+    var _updatedData
     getData(entity).then(function (_res) {
-        _data = JSON.parse(_res.data);
-
+        // _data = JSON.parse(_res.data);
+        _data = _res.data;
         if (Array.isArray(_data)) {
             _data.forEach(function (item, index) {
                 if (item.id === +id) {
                     for (var key in data) {
                         item[key] = data[key];
                     }
+                    _updatedData = item;
                     // break;
                 }
             })
@@ -161,7 +155,7 @@ function updateData(entity, id, data) {
         _data = JSON.stringify(_data);
 
         writeDataToFile(_res.file, _data).then(function () {
-            defer.resolve(true);
+            defer.resolve({ data: _updatedData });
         })
 
     }, function (err) {
@@ -176,7 +170,8 @@ function deleteData(entity, id) {
     var defer = q.defer();
     getData(entity).then(function (_res) {
         var _deletedData;
-        _data = JSON.parse(_res.data);
+        // _data = JSON.parse(_res.data);
+        _data = _res.data;
         if (Array.isArray(_data)) {
             for (var i = 0; i < _data.length; i++) {
                 if (_data[i].id === +id) {
@@ -191,7 +186,7 @@ function deleteData(entity, id) {
         _data = JSON.stringify(_data);
 
         writeDataToFile(_res.file, _data).then(function () {
-            defer.resolve(_deletedData);
+            defer.resolve({ data: _deletedData });
         })
 
     }, function (err) {
