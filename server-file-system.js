@@ -163,7 +163,10 @@ function insertData(entity, data) {
 
 }
 
-
+//generate random number out of digits
+function rand(digits) {
+    return Math.floor(Math.random()*parseInt('8' + '9'.repeat(digits-1))+parseInt('1' + '0'.repeat(digits-1)));
+}
 
 
 function updateData(entity, id, data) {
