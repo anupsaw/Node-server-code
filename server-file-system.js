@@ -5,17 +5,23 @@ var path = require('path');
 var q = require('q');
 
 var success;
-var error
+var error;
 
 // middleware that is specific to this router
 router.use(function timeLog(req, res, next) {
     console.log('Time: ', Date.now())
     console.log(res)
+    res.setHeader('Access-Control-Allow-Origin','*');
+    res.setHeader('Access-Control-Allow-Methods','*');
+    res.setHeader('Access-Control-Allow-Headers','Content-Type');
+    res.setHeader('Access-Control-Max-Age',86400);
+
+    
     //console.log(req);
 
     success = function (_res) {
         res.statusCode = req.method === 'POST' ? 201 : req.method === 'DELETE' ? 204 : 200;
-        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Type', 'x-www-form-urlencoded');
         res.write(JSON.stringify(_res.data));
         res.end();
     }
@@ -82,7 +88,7 @@ function getData(entity, id) {
     fs.readFile(_fileName, function (err, data) {
         var _res;
         if (err) {
-            defer.resolve({ file: _fileName, data: '[]' });
+            defer.resolve({ file: _fileName, data: [] });
 
         } else {
 
@@ -91,9 +97,9 @@ function getData(entity, id) {
                 _res = data.find(function (item) {
                     return item.id === +id;
                 })
-                _res = _res === undefined ? defer.reject('No Data found.') : JSON.stringify(_res);
+                _res = _res === undefined ? defer.reject('No Data found.') : _res;
             } else {
-                _res = JSON.parse(data);;
+                _res = JSON.parse(data);
             }
 
             defer.resolve({ file: _fileName, data: _res });
@@ -112,6 +118,8 @@ function insertData(entity, data) {
         if (Array.isArray(_data)) {
             data.id = _data.length + 1;
             _data.push(data);
+        }else{
+            defer.reject("Object type is not array");
         }
 
         _data = JSON.stringify(_data);
@@ -150,6 +158,8 @@ function updateData(entity, id, data) {
                     // break;
                 }
             })
+        }else{
+            defer.reject("Object type is not array");
         }
 
         _data = JSON.stringify(_data);
@@ -181,6 +191,8 @@ function deleteData(entity, id) {
 
 
             }
+        }else{
+            defer.reject("Object type is not array");
         }
 
         _data = JSON.stringify(_data);
