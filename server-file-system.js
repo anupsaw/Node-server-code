@@ -6,6 +6,7 @@ var q = require('q');
 
 var success;
 var error;
+var test;
 
 // middleware that is specific to this router
 router.use(function timeLog(req, res, next) {
