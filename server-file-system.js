@@ -12,25 +12,32 @@ var test;
 router.use(function timeLog(req, res, next) {
     console.log('Time: ', Date.now())
     console.log(res)
-    res.setHeader('Access-Control-Allow-Origin','*');
-    res.setHeader('Access-Control-Allow-Methods','*');
-    res.setHeader('Access-Control-Allow-Headers','Content-Type');
-    res.setHeader('Access-Control-Max-Age',86400);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Max-Age', 86400);
 
-    
+
     //console.log(req);
 
     success = function (_res) {
         res.statusCode = req.method === 'POST' ? 201 : req.method === 'DELETE' ? 204 : 200;
-        res.setHeader('Content-Type', 'x-www-form-urlencoded');
+        res.setHeader('Content-Type', 'application/json');
         res.write(JSON.stringify(_res.data));
         res.end();
     }
 
     error = function (err) {
         res.statusCode = 500;
-        res.setHeader('Content-Type', 'text/plain');
-        res.write(err);
+
+        if (typeof err == 'string') {
+            res.setHeader('Content-Type', 'text/plain');
+            res.write(err);
+        } else {
+            res.setHeader('Content-Type', 'application/json');
+            res.write(JSON.stringify(err, ["message", "arguments", "type", "stack", "name"]));
+        }
+
         res.end();
     }
     next();
@@ -83,6 +90,15 @@ function getFileName(entity) {
 
 }
 
+function checkDuplicat(data, id) {
+
+    return data.some(function (item) {
+        return id == item.id;
+    })
+
+}
+
+
 function getData(entity, id) {
     var defer = q.defer();
     var _fileName = getFileName(entity);
@@ -96,9 +112,9 @@ function getData(entity, id) {
             if (id !== null && id !== undefined) {
                 data = JSON.parse(data);
                 _res = data.find(function (item) {
-                    return item.id === +id;
+                    return item.id === id;
                 })
-                _res = _res === undefined ? defer.reject('No Data found.') : _res;
+                _res = _res === undefined ? defer.reject(new Error("No data found for id " + id + ".")) : _res;
             } else {
                 _res = JSON.parse(data);
             }
@@ -117,10 +133,18 @@ function insertData(entity, data) {
         //_data = JSON.parse(_res.data);
         _data = _res.data;
         if (Array.isArray(_data)) {
-            data.id = _data.length + 1;
+
+            if (!data.id) {
+                data.id = new Date().getTime();
+            } else {
+                if (checkDuplicat(_data, data.id)) {
+                    defer.reject(new Error("Id " + data.id + " already exists.Please provide some other Id."));
+                };
+            }
+
             _data.push(data);
-        }else{
-            defer.reject("Object type is not array");
+        } else {
+            defer.reject(new Error("Your json data file is corrupted."));
         }
 
         _data = JSON.stringify(_data);
@@ -148,27 +172,39 @@ function updateData(entity, id, data) {
     var _updatedData
     getData(entity).then(function (_res) {
         // _data = JSON.parse(_res.data);
-        _data = _res.data;
-        if (Array.isArray(_data)) {
-            _data.forEach(function (item, index) {
-                if (item.id === +id) {
-                    for (var key in data) {
-                        item[key] = data[key];
+        try {
+
+            _data = _res.data;
+            //data check
+            if (Array.isArray(_data)) {
+                _data.forEach(function (item, index) {
+                    if (item.id === id) {
+                        for (var key in data) {
+                            if (key != "id") item[key] = data[key];
+                        }
+                        _updatedData = item;
+                        // break;
                     }
-                    _updatedData = item;
-                    // break;
-                }
-            })
-        }else{
-            defer.reject("Object type is not array");
+                })
+            } else {
+                defer.reject(new Error("Your json data file is corrupted."));
+            }
+
+
+            // if file updated of not
+            if (_updatedData) {
+                _data = JSON.stringify(_data);
+
+                writeDataToFile(_res.file, _data).then(function () {
+                    defer.resolve({ data: _updatedData });
+                })
+            } else {
+                defer.reject(new Error("Data not found to update."));
+            }
+
+        } catch (error) {
+            defer.reject(error);
         }
-
-        _data = JSON.stringify(_data);
-
-        writeDataToFile(_res.file, _data).then(function () {
-            defer.resolve({ data: _updatedData });
-        })
-
     }, function (err) {
         defer.reject(err);
     });
@@ -185,15 +221,15 @@ function deleteData(entity, id) {
         _data = _res.data;
         if (Array.isArray(_data)) {
             for (var i = 0; i < _data.length; i++) {
-                if (_data[i].id === +id) {
+                if (_data[i].id === id) {
                     _deletedData = _data.splice(i, 1);
                     break;
                 }
 
 
             }
-        }else{
-            defer.reject("Object type is not array");
+        } else {
+            defer.reject(new Error("Your json data file is corrupted."));
         }
 
         _data = JSON.stringify(_data);
@@ -212,7 +248,7 @@ function deleteData(entity, id) {
 
 function writeDataToFile(file, data) {
     var defer = q.defer();
-    fs.writeFile(file, data, 'utf8', function (err) {
+    fs.writeFile(file, data, 'utf-8', function (err) {
         if (err) {
             defer.reject(err)
         } else {
