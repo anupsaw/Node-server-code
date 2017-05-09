@@ -112,9 +112,9 @@ function getData(entity, id) {
             if (id !== null && id !== undefined) {
                 data = JSON.parse(data);
                 _res = data.find(function (item) {
-                    return item.id === id;
+                    return item.id == id;
                 })
-                _res = _res === undefined ? defer.reject(new Error("No data found for id " + id + ".")) : _res;
+                _res = _res == undefined ? defer.reject(new Error("No data found for id " + id + ".")) : _res;
             } else {
                 _res = JSON.parse(data);
             }
@@ -181,7 +181,7 @@ function updateData(entity, id, data) {
             //data check
             if (Array.isArray(_data)) {
                 _data.forEach(function (item, index) {
-                    if (item.id === id) {
+                    if (item.id == id) {
                         for (var key in data) {
                             if (key != "id") item[key] = data[key];
                         }
@@ -224,7 +224,7 @@ function deleteData(entity, id) {
         _data = _res.data;
         if (Array.isArray(_data)) {
             for (var i = 0; i < _data.length; i++) {
-                if (_data[i].id === id) {
+                if (_data[i].id == id) {
                     _deletedData = _data.splice(i, 1);
                     break;
                 }
