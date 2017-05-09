@@ -105,7 +105,10 @@ function getData(entity, id) {
     fs.readFile(_fileName, function (err, data) {
         var _res;
         if (err) {
-            defer.resolve({ file: _fileName, data: [] });
+            defer.resolve({
+                file: _fileName,
+                data: []
+            });
 
         } else {
 
@@ -119,12 +122,24 @@ function getData(entity, id) {
                 _res = JSON.parse(data);
             }
 
-            defer.resolve({ file: _fileName, data: _res });
+            defer.resolve({
+                file: _fileName,
+                data: _res
+            });
         }
     });
     return defer.promise;
 }
 
+function reorderData(data) {
+    var _createdData = {};
+    _createdData['id'] = data['id'];
+    for (var key in data) {
+        if (key != "id") _createdData[key] = data[key];
+    }
+
+    return _createdData;
+}
 
 
 function insertData(entity, data) {
@@ -141,8 +156,8 @@ function insertData(entity, data) {
                     defer.reject(new Error("Id " + data.id + " already exists.Please provide some other Id."));
                 };
             }
-
-            _data.push(data);
+            var _newData = reorderData(data);
+            _data.push(_newData);
         } else {
             defer.reject(new Error("Your json data file is corrupted."));
         }
@@ -150,7 +165,9 @@ function insertData(entity, data) {
         _data = JSON.stringify(_data);
 
         writeDataToFile(_res.file, _data).then(function () {
-            defer.resolve({ data: data });
+            defer.resolve({
+                data: _newData
+            });
         })
 
 
@@ -165,7 +182,7 @@ function insertData(entity, data) {
 
 //generate random number out of digits
 function rand(digits) {
-    return Math.floor(Math.random()*parseInt('8' + '9'.repeat(digits-1))+parseInt('1' + '0'.repeat(digits-1)));
+    return Math.floor(Math.random() * parseInt('8' + '9'.repeat(digits - 1)) + parseInt('1' + '0'.repeat(digits - 1)));
 }
 
 
@@ -199,7 +216,9 @@ function updateData(entity, id, data) {
                 _data = JSON.stringify(_data);
 
                 writeDataToFile(_res.file, _data).then(function () {
-                    defer.resolve({ data: _updatedData });
+                    defer.resolve({
+                        data: _updatedData
+                    });
                 })
             } else {
                 defer.reject(new Error("Data not found to update."));
@@ -238,7 +257,9 @@ function deleteData(entity, id) {
         _data = JSON.stringify(_data);
 
         writeDataToFile(_res.file, _data).then(function () {
-            defer.resolve({ data: _deletedData });
+            defer.resolve({
+                data: _deletedData
+            });
         })
 
     }, function (err) {
